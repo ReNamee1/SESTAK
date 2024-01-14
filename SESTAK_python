@@ -1,0 +1,48 @@
+import tensorflow as tf
+from tensorflowjs import converters
+import numpy as np
+import sounddevice as sd
+import librosa
+
+# Teachable Machine model URL
+URL = "./my_model/"
+
+# Load the Teachable Machine model
+model = tf.keras.models.load_model(URL)
+
+# Class labels
+class_labels = ["class1", "class2", "class3"]  # Replace with your actual class labels
+
+# Function to preprocess audio data
+def preprocess_audio(audio_data):
+    # You may need to adjust the preprocessing steps based on your model requirements
+    # Example: convert audio to spectrogram
+    spectrogram = librosa.feature.melspectrogram(audio_data, sr=44100, n_fft=1024, hop_length=512)
+    spectrogram = librosa.power_to_db(spectrogram, ref=np.max)
+    spectrogram = np.expand_dims(spectrogram, axis=-1)
+    return spectrogram
+
+# Function to predict class from audio data
+def predict_class(audio_data):
+    processed_data = preprocess_audio(audio_data)
+    prediction = model.predict(np.expand_dims(processed_data, axis=0))[0]
+    predicted_class_index = np.argmax(prediction)
+    return class_labels[predicted_class_index], prediction[predicted_class_index]
+
+# Function to start audio recording
+def start_audio_recording():
+    duration = 5  # recording duration in seconds
+    audio_data = sd.rec(int(44100 * duration), samplerate=44100, channels=1, dtype='int16')
+    sd.wait()
+    return audio_data.flatten()
+
+# Main function
+def main():
+    while True:
+        input("Press Enter to start recording...")
+        audio_data = start_audio_recording()
+        predicted_class, confidence = predict_class(audio_data)
+        print(f"Predicted Class: {predicted_class}, Confidence: {confidence:.2f}")
+
+if __name__ == "__main__":
+    main()
